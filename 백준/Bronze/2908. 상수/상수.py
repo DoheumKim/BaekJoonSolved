@@ -1,0 +1,1 @@
+n1,n2 = map(int,input().split());n1=str(n1)[::-1];n2=str(n2)[::-1];print(max(int(n1),int(n2)))
