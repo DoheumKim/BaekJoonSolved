@@ -1,37 +1,49 @@
 import sys
 
-input = sys.stdin.readline
-N, K, Q = map(int, input().split())
-initial_state = [[0] * (N + 1) for _ in range(N + 1)]
+# 빠른 입력 처리
+input_data = sys.stdin.read().split()
+if not input_data:
+    exit()
+
+N, K, Q = map(int, input_data[:3])
+idx = 3
+
+# 각 위치(i)에서 목표 위치(c)로 가야 하는 사탕의 분포를 기록
+# count[i] = (i번 위치에 있는 사탕들이 이동해야 할 총 거리의 지표)
+# 실제로는 구간 합을 이용하기 위해 'i번 위치에서 나가야 하는 사탕의 순수 변화량'을 계산함
+diff = [0] * (N + 1)
 
 for i in range(1, N + 1):
-    colors = map(int, input().split())
-    for color in colors:
-        initial_state[i][color] += 1
+    # i번 깡통에서 나가는 사탕들은 기본적으로 i번 깡통이 목표가 아닌 것들임
+    # 하지만 더 정확하게는 '누적 흐름'의 관점에서 접근해야 함
+    for _ in range(K):
+        color = int(input_data[idx])
+        idx += 1
+        # dist: 시계 방향으로 이동해야 할 거리
+        dist = (color - i + N) % N
+        
+        # 개별 사탕의 거리가 Q를 넘으면 즉시 실패 (서브태스크 3 해결)
+        if dist > Q:
+            print(0)
+            exit()
+            
+        # 1번 깡통을 지나는 흐름을 계산하기 위한 처리
+        if i > color:
+            diff[0] += 1 # 1번 깡통을 통과함
+        diff[color] -= 1
+        diff[i] += 1
 
-delta = [[0] * (N + 1) for _ in range(N + 1)]
-for i in range(1, N + 1):
-    for c in range(1, N + 1):
-        goal = K if i == c else 0
-        delta[i][c] = initial_state[i][c] - goal
+# 깡통 사이의 흐름(Flow) 계산
+current_flow = diff[0]
+max_flow = current_flow
 
-out_prefix_sum = [[0] * (N + 1) for _ in range(N + 1)]
+for i in range(1, N):
+    current_flow += diff[i]
+    if current_flow > max_flow:
+        max_flow = current_flow
 
-for c in range(1, N + 1):out_prefix_sum[1][c] = delta[1][c]
-
-for i in range(2, N + 1):
-    for c in range(1, N + 1):
-        out_prefix_sum[i][c] = out_prefix_sum[i - 1][c] + delta[i][c]
-
-min_needed_from_can_1 = [0] * (N + 1)
-for c in range(1, N + 1):
-    max_negative_sum = 0
-    for i in range(1, N + 1):
-        if -out_prefix_sum[i][c] > max_negative_sum:
-            max_negative_sum = -out_prefix_sum[i][c]
-    min_needed_from_can_1[c] = max_negative_sum
-
-total_min_needed = sum(min_needed_from_can_1)
-
-if total_min_needed <= Q:print(1)
-else:print(0)
+# 전체 구간 중 가장 많이 흐르는 사탕의 수가 Q를 초과하는지 확인
+if max_flow <= Q:
+    print(1)
+else:
+    print(0)
