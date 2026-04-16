@@ -1,6 +1,6 @@
 import sys
 
-# 빠른 입력 처리
+# 입력을 한 번에 읽어 처리 속도 향상
 input_data = sys.stdin.read().split()
 if not input_data:
     exit()
@@ -8,42 +8,53 @@ if not input_data:
 N, K, Q = map(int, input_data[:3])
 idx = 3
 
-# 각 위치(i)에서 목표 위치(c)로 가야 하는 사탕의 분포를 기록
-# count[i] = (i번 위치에 있는 사탕들이 이동해야 할 총 거리의 지표)
-# 실제로는 구간 합을 이용하기 위해 'i번 위치에서 나가야 하는 사탕의 순수 변화량'을 계산함
+# 각 경계(i와 i+1 사이)를 지나는 사탕 수의 변화량 기록
+# diff[i]는 i번 경계와 i-1번 경계의 흐름 차이
 diff = [0] * (N + 1)
 
 for i in range(1, N + 1):
-    # i번 깡통에서 나가는 사탕들은 기본적으로 i번 깡통이 목표가 아닌 것들임
-    # 하지만 더 정확하게는 '누적 흐름'의 관점에서 접근해야 함
     for _ in range(K):
         color = int(input_data[idx])
         idx += 1
-        # dist: 시계 방향으로 이동해야 할 거리
-        dist = (color - i + N) % N
         
-        # 개별 사탕의 거리가 Q를 넘으면 즉시 실패 (서브태스크 3 해결)
+        dist = (color - i + N) % N
+        # 개별 거리 제약은 기본
         if dist > Q:
             print(0)
             exit()
             
-        # 1번 깡통을 지나는 흐름을 계산하기 위한 처리
-        if i > color:
-            diff[0] += 1 # 1번 깡통을 통과함
-        diff[color] -= 1
-        diff[i] += 1
+        if i <= color:
+            # i -> i+1 -> ... -> color 경로의 경계들에 흐름 추가
+            # i번 경계부터 color-1번 경계까지 +1
+            diff[i] += 1
+            diff[color] -= 1
+        else:
+            # i -> ... -> N -> 1 -> ... -> color (원형 이동)
+            # i번부터 N-1번까지 +1, 0번(N-1 사이)부터 color-1번까지 +1
+            diff[i] += 1
+            diff[N] -= 1
+            diff[0] += 1
+            diff[color] -= 1
 
-# 깡통 사이의 흐름(Flow) 계산
-current_flow = diff[0]
-max_flow = current_flow
+# 경계별 상대적 흐름 계산
+flows = [0] * N
+current = 0
+for i in range(N):
+    current += diff[i]
+    flows[i] = current
 
-for i in range(1, N):
-    current_flow += diff[i]
-    if current_flow > max_flow:
-        max_flow = current_flow
+# 최댓값과 최솟값의 차이가 N 이하인지 확인하는 것이 핵심이 아니라,
+# 모든 흐름 f_i를 f_i + m*N (m은 정수)으로 조절하여 0 <= f_i <= Q를 만족해야 함
+# 이 문제에서 m은 0일 수밖에 없음 (사탕을 한 바퀴 더 돌릴 필요가 없으므로)
 
-# 전체 구간 중 가장 많이 흐르는 사탕의 수가 Q를 초과하는지 확인
-if max_flow <= Q:
+f_max = max(flows)
+f_min = min(flows)
+
+# 모든 경계의 흐름이 0 이상 Q 이하가 되도록 조정 가능한지 판단
+# 0 <= flows[i] + offset <= Q 를 만족하는 정수 offset이 존재해야 함
+# 즉, max(flows) - min(flows) 가 Q 이하인지만 보는 것이 아니라
+# 흐름의 절댓값이 중요함. 이 로직에서는 f_max <= Q 이면 가능함.
+if f_max <= Q:
     print(1)
 else:
     print(0)
